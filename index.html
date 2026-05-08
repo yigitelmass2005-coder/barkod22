@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Auton — Barkod Tarayıcı</title>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#FAFAF8;color:#1A1A18;}
+.ekran{display:none;min-height:100vh;}
+.ekran.aktif{display:block;}
+.header{display:flex;align-items:center;gap:12px;padding:16px;background:#fff;border-bottom:.5px solid #E8E6DF;position:sticky;top:0;z-index:10;}
+.header-geri{width:36px;height:36px;border-radius:50%;background:#F1EFE8;border:none;font-size:18px;cursor:pointer;flex-shrink:0;}
+.header-baslik{font-size:17px;font-weight:600;}
+.header-badge{margin-left:auto;font-size:10px;font-weight:600;padding:3px 10px;border-radius:99px;background:#E1F5EE;color:#0F6E56;border:.5px solid #5DCAA5;}
+.sayfa{padding:16px;padding-bottom:90px;}
+.menu{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:.5px solid #E8E6DF;display:flex;z-index:100;}
+.menu-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 0;cursor:pointer;border:none;background:transparent;font-family:inherit;}
+.menu-ikon{font-size:22px;}
+.menu-lbl{font-size:10px;font-weight:500;color:#B4B2A9;}
+.menu-btn.aktif .menu-lbl{color:#1D9E75;}
+.stat-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px;}
+.stat-kart{background:#fff;border-radius:12px;padding:12px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.06);}
+.stat-sayi{font-size:24px;font-weight:600;}
+.stat-lbl{font-size:10px;color:#888780;margin-top:2px;}
+.dp-tabs{display:flex;gap:8px;margin-bottom:16px;}
+.dp-tab{flex:1;padding:10px;border-radius:10px;background:#F1EFE8;color:#888780;cursor:pointer;font-size:13px;text-align:center;border:none;font-family:inherit;}
+.dp-tab.on{background:#1A1A18;color:#fff;}
+.plan-kart{background:#fff;border-radius:14px;border:.5px solid #E8E6DF;padding:16px;margin-bottom:10px;box-shadow:0 2px 8px rgba(0,0,0,.06);}
+.plan-kart.aktif-plan{border-color:#1D9E75;background:#E1F5EE22;}
+.pk-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+.pk-isim{font-size:15px;font-weight:600;}
+.pk-badge{font-size:10px;font-weight:600;padding:3px 10px;border-radius:99px;}
+.pk-badge.aktif{background:#E1F5EE;color:#0F6E56;border:.5px solid #5DCAA5;}
+.pk-badge.eski{background:#F1EFE8;color:#888780;}
+.pk-tarih{font-size:11px;color:#B4B2A9;margin-bottom:10px;}
+.pk-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px;}
+.pk-bilgi{background:#F1EFE8;border-radius:8px;padding:8px 10px;}
+.pk-bilgi-lbl{font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#888780;margin-bottom:3px;}
+.pk-bilgi-val{font-size:14px;font-weight:600;}
+.pk-bilgi-unit{font-size:10px;color:#888780;}
+.pk-prog{height:5px;background:#E8E6DF;border-radius:99px;overflow:hidden;margin-bottom:10px;}
+.pk-prog-fill{height:100%;border-radius:99px;background:#1D9E75;}
+.pk-actions{display:flex;gap:7px;padding-top:10px;border-top:.5px solid #F1EFE8;}
+.pk-action{flex:1;height:36px;border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;border:none;font-family:inherit;}
+.pk-action.devam{background:#1A1A18;color:#fff;}
+.pk-action.sil{background:#FCEBEB;color:#A32D2D;}
+.pd-makro{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;margin-bottom:16px;}
+.pd-m{background:#fff;border-radius:10px;padding:10px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.06);}
+.pd-m-val{font-size:16px;font-weight:600;}
+.pd-m-lbl{font-size:9px;color:#888780;margin-top:2px;}
+.seclbl{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#B4B2A9;margin-bottom:10px;padding-bottom:8px;border-bottom:.5px solid #F1EFE8;margin-top:16px;}
+.besin-ekle-row{display:flex;gap:8px;margin-bottom:12px;}
+.besin-ara-inp{flex:1;height:48px;border:.5px solid #E8E6DF;border-radius:12px;background:#fff;color:#1A1A18;font-size:15px;padding:0 14px;outline:none;}
+.besin-ara-inp:focus{border-color:#1D9E75;}
+.barkod-btn{width:48px;height:48px;border-radius:12px;background:#1A1A18;border:none;cursor:pointer;font-size:22px;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
+.besin-sonuc-item{display:flex;align-items:center;gap:10px;padding:12px;background:#fff;border-radius:12px;border:.5px solid #E8E6DF;margin-bottom:8px;}
+.bsi-ikon{font-size:22px;flex-shrink:0;}
+.bsi-bilgi{flex:1;}
+.bsi-isim{font-size:14px;font-weight:600;margin-bottom:2px;}
+.bsi-makro{font-size:11px;color:#888780;}
+.bsi-ekle{padding:7px 14px;border-radius:99px;background:#1A1A18;color:#fff;border:none;font-size:12px;cursor:pointer;font-family:inherit;}
+.eklenen-besin{background:#fff;border-radius:12px;border:.5px solid #E8E6DF;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px;}
+.eb-ikon{width:38px;height:38px;border-radius:10px;background:#F1EFE8;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;}
+.eb-bilgi{flex:1;}
+.eb-isim{font-size:13px;font-weight:600;margin-bottom:2px;}
+.eb-makro{font-size:11px;color:#888780;}
+.eb-sil{width:30px;height:30px;border-radius:50%;background:#FCEBEB;border:none;cursor:pointer;color:#A32D2D;font-size:16px;flex-shrink:0;}
+
+/* BARKOD */
+#barkod-ekran{position:fixed;inset:0;background:#000;z-index:500;display:none;flex-direction:column;}
+#barkod-ekran.aktif{display:flex;}
+#qr-reader{flex:1;width:100%;position:relative;overflow:hidden;background:#000;}
+#qr-reader video{position:absolute!important;top:0!important;left:0!important;width:100%!important;height:100%!important;object-fit:cover!important;}
+#qr-reader img{display:none!important;}
+#qr-reader>div:first-child{display:none!important;}
+#qr-reader__scan_region{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;}
+#qr-reader__scan_region>img{display:none!important;}
+.bk-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;pointer-events:none;z-index:10;}
+.bk-cerceve{width:260px;height:160px;position:relative;}
+.bk-k1{position:absolute;top:0;left:0;width:30px;height:30px;border-top:3px solid #1D9E75;border-left:3px solid #1D9E75;}
+.bk-k2{position:absolute;top:0;right:0;width:30px;height:30px;border-top:3px solid #1D9E75;border-right:3px solid #1D9E75;}
+.bk-k3{position:absolute;bottom:0;left:0;width:30px;height:30px;border-bottom:3px solid #1D9E75;border-left:3px solid #1D9E75;}
+.bk-k4{position:absolute;bottom:0;right:0;width:30px;height:30px;border-bottom:3px solid #1D9E75;border-right:3px solid #1D9E75;}
+.bk-laser{position:absolute;left:8px;right:8px;height:2px;background:linear-gradient(90deg,transparent,#1D9E75,transparent);animation:laser 1.8s ease-in-out infinite;}
+@keyframes laser{0%{top:8px;}50%{top:calc(100% - 8px);}100%{top:8px;}}
+.bk-yazi{color:rgba(255,255,255,.7);font-size:13px;margin-top:16px;text-align:center;}
+.barkod-alt{padding:20px;background:#000;flex-shrink:0;}
+.barkod-status{color:rgba(255,255,255,.6);font-size:12px;text-align:center;margin-bottom:12px;min-height:18px;}
+.barkod-kapat-btn{width:100%;height:50px;background:rgba(255,255,255,.12);color:#fff;border:none;border-radius:14px;font-size:15px;cursor:pointer;font-family:inherit;}
+
+/* SHEET */
+.sheet-ov{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:600;display:none;align-items:flex-end;justify-content:center;}
+.sheet-ov.show{display:flex;}
+.sheet{background:#fff;border-radius:24px 24px 0 0;width:100%;max-width:480px;padding:16px 20px 40px;max-height:90vh;overflow-y:auto;}
+.sheet-handle{width:36px;height:4px;border-radius:99px;background:#E8E6DF;margin:0 auto 16px;}
+.sheet-kaynak{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:99px;font-size:10px;font-weight:600;margin-bottom:10px;}
+.sheet-isim{font-size:20px;font-weight:600;margin-bottom:3px;}
+.sheet-marka{font-size:12px;color:#888780;margin-bottom:14px;}
+.sheet-makro{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;margin-bottom:16px;}
+.sheet-m{background:#F1EFE8;border-radius:8px;padding:10px;text-align:center;}
+.sheet-m-val{font-size:18px;font-weight:600;}
+.sheet-m-lbl{font-size:9px;color:#888780;margin-top:2px;}
+.gramaj-row{display:flex;align-items:center;gap:10px;margin-bottom:16px;}
+.gramaj-inp{flex:1;height:52px;border:2px solid #1D9E75;border-radius:12px;background:#fff;color:#1A1A18;font-size:20px;font-weight:500;text-align:center;font-family:inherit;outline:none;}
+.gramaj-unit{font-size:14px;color:#888780;}
+.sheet-ekle-btn{width:100%;height:52px;background:#1A1A18;color:#fff;border:none;border-radius:14px;font-size:16px;font-weight:500;cursor:pointer;font-family:inherit;}
+.m-field{display:flex;flex-direction:column;gap:5px;margin-bottom:10px;}
+.m-field label{font-size:11px;font-weight:600;color:#888780;}
+.m-field input{height:46px;border:.5px solid #E8E6DF;border-radius:10px;background:#fff;color:#1A1A18;font-size:15px;padding:0 14px;font-family:inherit;outline:none;}
+.m-field input:focus{border-color:#1D9E75;}
+.m-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.iptal-btn{width:100%;height:46px;background:transparent;border:none;color:#888780;cursor:pointer;font-family:inherit;font-size:14px;margin-top:8px;}
+.yk{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:700;display:none;align-items:center;justify-content:center;flex-direction:column;gap:14px;}
+.yk.show{display:flex;}
+.yk-sp{width:48px;height:48px;border:3px solid rgba(255,255,255,.2);border-top-color:#1D9E75;border-radius:50%;animation:spin 700ms linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.yk-lbl{color:#fff;font-size:15px;font-weight:500;}
+.yk-sub{color:rgba(255,255,255,.55);font-size:12px;text-align:center;padding:0 20px;}
+.toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(20px);background:#1A1A18;color:#fff;padding:12px 22px;border-radius:99px;font-size:13px;font-weight:500;opacity:0;transition:all 300ms ease;z-index:800;white-space:nowrap;pointer-events:none;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+
+<div class="menu">
+  <button class="menu-btn" id="mb-anasayfa" onclick="menuGit('anasayfa')"><span class="menu-ikon">🏠</span><span class="menu-lbl">Ana Sayfa</span></button>
+  <button class="menu-btn aktif" id="mb-diyetlerim" onclick="menuGit('diyetlerim')"><span class="menu-ikon">📋</span><span class="menu-lbl">Diyetlerim</span></button>
+</div>
+
+<div class="ekran" id="e-anasayfa">
+  <div class="header"><div style="display:flex;align-items:center;gap:6px;"><div style="width:8px;height:8px;border-radius:50%;background:#1D9E75;"></div><span style="font-size:14px;font-weight:600;">Diyet Planlayıcı</span></div></div>
+  <div class="sayfa">
+    <div style="font-size:22px;font-weight:500;margin-bottom:4px;">Hoş geldin! 👋</div>
+    <div style="font-size:13px;color:#888780;margin-bottom:20px;">Aktif planın devam ediyor.</div>
+    <div class="plan-kart aktif-plan" onclick="acDetay(1)">
+      <div class="pk-header"><div class="pk-isim">Mayıs Planı</div><span class="pk-badge aktif">● Aktif</span></div>
+      <div class="pk-tarih">📅 1 Mayıs 2026 · 8 hafta</div>
+      <div class="pk-grid">
+        <div class="pk-bilgi"><div class="pk-bilgi-lbl">Günlük hedef</div><div class="pk-bilgi-val">2264<span class="pk-bilgi-unit"> kcal</span></div></div>
+        <div class="pk-bilgi"><div class="pk-bilgi-lbl">Hedef</div><div class="pk-bilgi-val" style="font-size:13px;">📉 Kilo verme</div></div>
+      </div>
+      <div class="pk-prog"><div class="pk-prog-fill" style="width:62%"></div></div>
+    </div>
+  </div>
+</div>
+
+<div class="ekran aktif" id="e-diyetlerim">
+  <div class="header"><div class="header-baslik">Diyetlerim</div></div>
+  <div class="sayfa">
+    <div class="stat-grid">
+      <div class="stat-kart"><div class="stat-sayi" id="st-toplam">3</div><div class="stat-lbl">Toplam</div></div>
+      <div class="stat-kart"><div class="stat-sayi" id="st-aktif">1</div><div class="stat-lbl">Aktif</div></div>
+      <div class="stat-kart"><div class="stat-sayi" id="st-tam">1</div><div class="stat-lbl">Tamamlanan</div></div>
+    </div>
+    <div class="dp-tabs">
+      <button class="dp-tab on" id="tab-tumu" onclick="planTab('tumu')">Tümü</button>
+      <button class="dp-tab" id="tab-aktif" onclick="planTab('aktif')">Aktif</button>
+      <button class="dp-tab" id="tab-gecmis" onclick="planTab('gecmis')">Geçmiş</button>
+    </div>
+    <div id="plan-liste"></div>
+  </div>
+</div>
+
+<div class="ekran" id="e-detay">
+  <div class="header">
+    <button class="header-geri" onclick="menuGit('diyetlerim')">←</button>
+    <div class="header-baslik" id="pd-isim">—</div>
+    <span class="header-badge" id="pd-badge">Aktif</span>
+  </div>
+  <div class="sayfa">
+    <div class="pd-makro">
+      <div class="pd-m"><div class="pd-m-val" id="pd-kcal">—</div><div class="pd-m-lbl">kcal</div></div>
+      <div class="pd-m"><div class="pd-m-val" id="pd-pro" style="color:#2B5BA8;">—g</div><div class="pd-m-lbl">Protein</div></div>
+      <div class="pd-m"><div class="pd-m-val" id="pd-karb" style="color:#1D9E75;">—g</div><div class="pd-m-lbl">Karb</div></div>
+      <div class="pd-m"><div class="pd-m-val" id="pd-yag" style="color:#EF9F27;">—g</div><div class="pd-m-lbl">Yağ</div></div>
+    </div>
+    <div class="seclbl" style="margin-top:0;">Besin Ekle</div>
+    <div class="besin-ekle-row">
+      <input class="besin-ara-inp" type="text" id="besin-ara" placeholder="Besin adı ara..." oninput="besinAra()"/>
+      <button class="barkod-btn" onclick="acBarkod()">📷</button>
+    </div>
+    <div id="besin-ara-sonuc"></div>
+    <div class="seclbl">Günlük Besinlerim</div>
+    <div id="eklenen-besinler"></div>
+  </div>
+</div>
+
+<!-- BARKOD -->
+<div id="barkod-ekran">
+  <div id="qr-reader">
+    <div class="bk-overlay">
+      <div class="bk-cerceve">
+        <div class="bk-k1"></div><div class="bk-k2"></div>
+        <div class="bk-k3"></div><div class="bk-k4"></div>
+        <div class="bk-laser"></div>
+      </div>
+      <div class="bk-yazi">Barkodu çerçeve içine hizala</div>
+    </div>
+  </div>
+  <div class="barkod-alt">
+    <div class="barkod-status" id="barkod-status">Başlatılıyor...</div>
+    <button class="barkod-kapat-btn" onclick="kapatBarkod()">İptal</button>
+  </div>
+</div>
+
+<!-- SONUÇ -->
+<div class="sheet-ov" id="sonuc-ov">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-kaynak" id="sonuc-kaynak"></div>
+    <div class="sheet-isim" id="sonuc-isim">—</div>
+    <div class="sheet-marka" id="sonuc-marka">—</div>
+    <div class="sheet-makro">
+      <div class="sheet-m"><div class="sheet-m-val" id="s-kcal">—</div><div class="sheet-m-lbl">kcal</div></div>
+      <div class="sheet-m"><div class="sheet-m-val" id="s-pro" style="color:#2B5BA8;">—g</div><div class="sheet-m-lbl">Protein</div></div>
+      <div class="sheet-m"><div class="sheet-m-val" id="s-karb" style="color:#1D9E75;">—g</div><div class="sheet-m-lbl">Karb</div></div>
+      <div class="sheet-m"><div class="sheet-m-val" id="s-yag" style="color:#EF9F27;">—g</div><div class="sheet-m-lbl">Yağ</div></div>
+    </div>
+    <div style="font-size:13px;font-weight:600;margin-bottom:8px;">Kaç gram yiyeceksin?</div>
+    <div class="gramaj-row">
+      <input class="gramaj-inp" type="number" id="sonuc-gramaj" value="100" inputmode="numeric"/>
+      <span class="gramaj-unit">gram</span>
+    </div>
+    <button class="sheet-ekle-btn" onclick="besinEkle()">+ Planıma ekle</button>
+  </div>
+</div>
+
+<!-- MANUEL -->
+<div class="sheet-ov" id="manuel-ov">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div style="font-size:18px;font-weight:600;margin-bottom:4px;">Manuel besin girişi</div>
+    <div style="font-size:13px;color:#888780;margin-bottom:16px;">Veritabanında bulunamadı — bilgileri kendin gir.</div>
+    <div class="m-field"><label>Besin adı *</label><input type="text" id="m-isim" placeholder="Örn: Ev yoğurdu"></div>
+    <div class="m-grid">
+      <div class="m-field"><label>Kalori (100g)</label><input type="number" id="m-kcal" placeholder="150" inputmode="numeric"></div>
+      <div class="m-field"><label>Protein (g)</label><input type="number" id="m-pro" placeholder="10" inputmode="numeric"></div>
+      <div class="m-field"><label>Karbonhidrat (g)</label><input type="number" id="m-karb" placeholder="20" inputmode="numeric"></div>
+      <div class="m-field"><label>Yağ (g)</label><input type="number" id="m-yag" placeholder="5" inputmode="numeric"></div>
+    </div>
+    <div class="m-field"><label>Gramaj</label><input type="number" id="m-gramaj" value="100" inputmode="numeric"></div>
+    <button class="sheet-ekle-btn" style="margin-top:4px;" onclick="manuelEkle()">+ Planıma ekle</button>
+    <button class="iptal-btn" onclick="document.getElementById('manuel-ov').classList.remove('show')">İptal</button>
+  </div>
+</div>
+
+<div class="yk" id="yk">
+  <div class="yk-sp"></div>
+  <div class="yk-lbl" id="yk-lbl">Sorgulanıyor...</div>
+  <div class="yk-sub" id="yk-sub">Lütfen bekleyin</div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+let PLANLAR=[
+  {id:1,isim:'Mayıs Planı',tarih:'1 Mayıs 2026',hafta:8,kcal:2264,pro:165,karb:185,yag:78,hedef:'ver',hedefTxt:'Kilo verme',ilerleme:62,durum:'aktif'},
+  {id:2,isim:'Nisan Planı',tarih:'1 Nisan 2026',hafta:4,kcal:2100,pro:150,karb:170,yag:70,hedef:'koru',hedefTxt:'Kilo koruma',ilerleme:100,durum:'tamamlandi'},
+  {id:3,isim:'Mart Planı',tarih:'1 Mart 2026',hafta:6,kcal:2400,pro:180,karb:200,yag:85,hedef:'al',hedefTxt:'Kilo alma',ilerleme:45,durum:'pasif'},
+];
+let aktifTab='tumu',eklenmisBesins=[],bekleyenBesin=null;
+let html5QrCode=null,barkodAktif=false;
+
+const BESIN_DB=[
+  {isim:'Yumurta',kcal:155,pro:13,karb:1,yag:11,ikon:'🥚'},
+  {isim:'Tavuk göğsü',kcal:165,pro:31,karb:0,yag:3.6,ikon:'🍗'},
+  {isim:'Kepekli ekmek',kcal:247,pro:9,karb:41,yag:3.5,ikon:'🍞'},
+  {isim:'Yoğurt',kcal:61,pro:5,karb:7,yag:2,ikon:'🥛'},
+  {isim:'Elma',kcal:52,pro:0.3,karb:14,yag:0.2,ikon:'🍎'},
+  {isim:'Brokoli',kcal:34,pro:2.8,karb:7,yag:0.4,ikon:'🥦'},
+  {isim:'Zeytinyağı',kcal:884,pro:0,karb:0,yag:100,ikon:'🫒'},
+  {isim:'Mercimek',kcal:116,pro:9,karb:20,yag:0.4,ikon:'🫘'},
+  {isim:'Süzme yoğurt',kcal:97,pro:10,karb:4,yag:5,ikon:'🥛'},
+  {isim:'Beyaz peynir',kcal:264,pro:18,karb:0,yag:20,ikon:'🧀'},
+];
+
+function menuGit(s){
+  ['anasayfa','diyetlerim','detay'].forEach(x=>{
+    document.getElementById('e-'+x).classList.toggle('aktif',x===s);
+  });
+  ['anasayfa','diyetlerim'].forEach(x=>{
+    const btn=document.getElementById('mb-'+x);
+    if(btn)btn.classList.toggle('aktif',x===s);
+  });
+  if(s==='diyetlerim')renderPlanlar();
+}
+
+function planTab(t){
+  aktifTab=t;
+  ['tumu','aktif','gecmis'].forEach(x=>document.getElementById('tab-'+x).classList.toggle('on',x===t));
+  renderPlanlar();
+}
+
+function renderPlanlar(){
+  let liste=[...PLANLAR];
+  if(aktifTab==='aktif')liste=liste.filter(p=>p.durum==='aktif');
+  if(aktifTab==='gecmis')liste=liste.filter(p=>p.durum!=='aktif');
+  document.getElementById('st-toplam').textContent=PLANLAR.length;
+  document.getElementById('st-aktif').textContent=PLANLAR.filter(p=>p.durum==='aktif').length;
+  document.getElementById('st-tam').textContent=PLANLAR.filter(p=>p.durum==='tamamlandi').length;
+  const el=document.getElementById('plan-liste');
+  if(!liste.length){el.innerHTML='<div style="text-align:center;padding:32px;color:#B4B2A9;font-size:13px;">Henüz plan yok</div>';return;}
+  el.innerHTML=liste.map(p=>{
+    const badge=p.durum==='aktif'?'<span class="pk-badge aktif">● Aktif</span>':'<span class="pk-badge eski">Geçmiş</span>';
+    const prog=p.durum==='aktif'?`<div class="pk-prog"><div class="pk-prog-fill" style="width:${p.ilerleme}%"></div></div>`:'';
+    return`<div class="plan-kart ${p.durum==='aktif'?'aktif-plan':''}" onclick="acDetay(${p.id})">
+      <div class="pk-header"><div class="pk-isim">${p.isim}</div>${badge}</div>
+      <div class="pk-tarih">📅 ${p.tarih} · ${p.hafta} hafta</div>
+      <div class="pk-grid">
+        <div class="pk-bilgi"><div class="pk-bilgi-lbl">Günlük hedef</div><div class="pk-bilgi-val">${p.kcal}<span class="pk-bilgi-unit"> kcal</span></div></div>
+        <div class="pk-bilgi"><div class="pk-bilgi-lbl">Hedef</div><div class="pk-bilgi-val" style="font-size:12px;">${p.hedef==='ver'?'📉':p.hedef==='koru'?'⚖️':'📈'} ${p.hedefTxt}</div></div>
+      </div>${prog}
+      <div class="pk-actions">
+        ${p.durum==='aktif'?`<button class="pk-action devam" onclick="event.stopPropagation();acDetay(${p.id})">📷 Besin ekle</button>`:`<button class="pk-action" style="background:#F1EFE8;color:#1A1A18;" onclick="event.stopPropagation();acDetay(${p.id})">Görüntüle</button>`}
+        <button class="pk-action sil" onclick="event.stopPropagation();silPlan(${p.id})">Sil</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function acDetay(id){
+  const p=PLANLAR.find(x=>x.id===id);if(!p)return;
+  document.getElementById('pd-isim').textContent=p.isim;
+  document.getElementById('pd-badge').textContent=p.durum==='aktif'?'Aktif':'Geçmiş';
+  document.getElementById('pd-kcal').textContent=p.kcal;
+  document.getElementById('pd-pro').textContent=p.pro+'g';
+  document.getElementById('pd-karb').textContent=p.karb+'g';
+  document.getElementById('pd-yag').textContent=p.yag+'g';
+  document.getElementById('besin-ara').value='';
+  document.getElementById('besin-ara-sonuc').innerHTML='';
+  renderEklenenler();
+  menuGit('detay');
+}
+
+function silPlan(id){
+  if(confirm('Silmek istiyor musun?')){PLANLAR=PLANLAR.filter(p=>p.id!==id);renderPlanlar();}
+}
+
+function besinAra(){
+  const q=document.getElementById('besin-ara').value.trim().toLowerCase();
+  const el=document.getElementById('besin-ara-sonuc');
+  if(!q){el.innerHTML='';return;}
+  const res=BESIN_DB.filter(b=>b.isim.toLowerCase().includes(q));
+  if(!res.length){el.innerHTML='<div style="font-size:12px;color:#B4B2A9;padding:8px 0;">Sonuç bulunamadı.</div>';return;}
+  el.innerHTML=res.map(b=>`<div class="besin-sonuc-item">
+    <span class="bsi-ikon">${b.ikon}</span>
+    <div class="bsi-bilgi"><div class="bsi-isim">${b.isim}</div><div class="bsi-makro">${b.kcal} kcal · P ${b.pro}g · K ${b.karb}g · Y ${b.yag}g</div></div>
+    <button class="bsi-ekle" onclick="besinSecArama('${b.isim}',${b.kcal},${b.pro},${b.karb},${b.yag},'${b.ikon}')">Ekle</button>
+  </div>`).join('');
+}
+
+function besinSecArama(isim,kcal,pro,karb,yag,ikon){
+  bekleyenBesin={isim,kcal,pro,karb,yag,ikon,kaynak:'arama'};
+  acSonucSheet({isim,marka:`${kcal} kcal / 100g`,kcal,pro,karb,yag,kaynak:'arama'});
+}
+
+// BARKOD
+function acBarkod(){
+  barkodAktif=true;
+  document.getElementById('barkod-ekran').style.display='flex';
+  document.getElementById('barkod-status').textContent='Kamera başlatılıyor...';
+
+  // Önceki instance'ı temizle
+  if(html5QrCode){
+    try{html5QrCode.stop();}catch(e){}
+    try{html5QrCode.clear();}catch(e){}
+  }
+  html5QrCode=new Html5Qrcode('qr-reader',{verbose:false});
+
+  Html5Qrcode.getCameras().then(cameras=>{
+    if(!cameras||cameras.length===0){
+      document.getElementById('barkod-status').textContent='Kamera bulunamadı';
+      return;
+    }
+
+    // Arka kamerayı bul
+    let cameraId=cameras[cameras.length-1].id;
+    for(let c of cameras){
+      if(c.label&&(c.label.toLowerCase().includes('back')||c.label.toLowerCase().includes('rear')||c.label.toLowerCase().includes('arka'))){
+        cameraId=c.id;break;
+      }
+    }
+
+    html5QrCode.start(
+      cameraId,
+      {
+        fps:15,
+        qrbox:function(w,h){return{width:Math.min(w,h)*0.9,height:Math.min(w,h)*0.5}},
+        aspectRatio:window.innerWidth/window.innerHeight,
+        formatsToSupport:[
+          Html5QrcodeSupportedFormats.EAN_13,
+          Html5QrcodeSupportedFormats.EAN_8,
+          Html5QrcodeSupportedFormats.UPC_A,
+          Html5QrcodeSupportedFormats.UPC_E,
+          Html5QrcodeSupportedFormats.CODE_128,
+          Html5QrcodeSupportedFormats.CODE_39,
+          Html5QrcodeSupportedFormats.ITF,
+        ]
+      },
+      async(decodedText)=>{
+        if(!barkodAktif)return;
+        barkodAktif=false;
+        showToast('📷 Barkod okundu: '+decodedText);
+        await kapatBarkod();
+        await islemBarkod(decodedText);
+      },
+      ()=>{}
+    ).then(()=>{
+      document.getElementById('barkod-status').textContent='✓ Hazır — barkodu çerçeveye tut';
+    }).catch(err=>{
+      document.getElementById('barkod-status').textContent='Hata: '+err;
+    });
+
+  }).catch(err=>{
+    document.getElementById('barkod-status').textContent='Kamera izni gerekli: '+err;
+  });
+}
+
+async function kapatBarkod(){
+  barkodAktif=false;
+  if(html5QrCode){
+    try{await html5QrCode.stop();}catch(e){}
+    try{html5QrCode.clear();}catch(e){}
+    html5QrCode=null;
+  }
+  document.getElementById('barkod-ekran').style.display='none';
+}
+
+async function islemBarkod(barcode){
+  const yk=document.getElementById('yk');
+  document.getElementById('yk-lbl').textContent='Barkod okundu!';
+  document.getElementById('yk-sub').textContent=barcode+'\nOpen Food Facts sorgulanıyor...';
+  yk.classList.add('show');
+  try{
+    const res=await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`);
+    const data=await res.json();
+    yk.classList.remove('show');
+    if(data.status===1&&data.product){
+      const p=data.product;const n=p.nutriments||{};
+      const sonuc={
+        isim:p.product_name_tr||p.product_name||'Bilinmeyen ürün',
+        marka:(p.brands?p.brands+' · ':'')+barcode,
+        kcal:Math.round(n['energy-kcal_100g']||0),
+        pro:Math.round((n.proteins_100g||0)*10)/10,
+        karb:Math.round((n.carbohydrates_100g||0)*10)/10,
+        yag:Math.round((n.fat_100g||0)*10)/10,
+        kaynak:'openfood',ikon:'🏷️'
+      };
+      bekleyenBesin=sonuc;acSonucSheet(sonuc);
+    }else{
+      showToast('Ürün bulunamadı — manuel giriş');
+      setTimeout(()=>{
+        ['m-isim','m-kcal','m-pro','m-karb','m-yag'].forEach(id=>document.getElementById(id).value='');
+        document.getElementById('m-gramaj').value='100';
+        document.getElementById('manuel-ov').classList.add('show');
+      },400);
+    }
+  }catch(e){
+    yk.classList.remove('show');
+    showToast('Bağlantı hatası — manuel giriş');
+    setTimeout(()=>document.getElementById('manuel-ov').classList.add('show'),400);
+  }
+}
+
+function acSonucSheet(d){
+  const km={'openfood':{r:'#1D9E75',l:'Open Food Facts'},'arama':{r:'#2B5BA8',l:'Veritabanı'}};
+  const k=km[d.kaynak]||{r:'#888780',l:'Manuel'};
+  const el=document.getElementById('sonuc-kaynak');
+  el.style.cssText=`background:${k.r}22;color:${k.r};border:.5px solid ${k.r};`;
+  el.textContent='● '+k.l+'tan bulundu';
+  document.getElementById('sonuc-isim').textContent=d.isim;
+  document.getElementById('sonuc-marka').textContent=d.marka||'';
+  document.getElementById('s-kcal').textContent=d.kcal;
+  document.getElementById('s-pro').textContent=d.pro+'g';
+  document.getElementById('s-karb').textContent=d.karb+'g';
+  document.getElementById('s-yag').textContent=d.yag+'g';
+  document.getElementById('sonuc-gramaj').value=100;
+  document.getElementById('sonuc-ov').classList.add('show');
+}
+
+function besinEkle(){
+  if(!bekleyenBesin)return;
+  const g=parseFloat(document.getElementById('sonuc-gramaj').value)||100;
+  const r=g/100;
+  eklenmisBesins.push({
+    isim:bekleyenBesin.isim,gramaj:g,
+    kcal:Math.round(bekleyenBesin.kcal*r),
+    pro:Math.round(bekleyenBesin.pro*r*10)/10,
+    karb:Math.round(bekleyenBesin.karb*r*10)/10,
+    yag:Math.round(bekleyenBesin.yag*r*10)/10,
+    ikon:bekleyenBesin.ikon||'🍽️',
+    kaynak:bekleyenBesin.kaynak
+  });
+  document.getElementById('sonuc-ov').classList.remove('show');
+  document.getElementById('besin-ara').value='';
+  document.getElementById('besin-ara-sonuc').innerHTML='';
+  bekleyenBesin=null;
+  renderEklenenler();
+  showToast('✓ Planına eklendi!');
+}
+
+function manuelEkle(){
+  const isim=document.getElementById('m-isim').value.trim();
+  if(!isim){alert('Besin adı gerekli.');return;}
+  const g=parseFloat(document.getElementById('m-gramaj').value)||100;
+  const r=g/100;
+  eklenmisBesins.push({
+    isim,gramaj:g,
+    kcal:Math.round((parseFloat(document.getElementById('m-kcal').value)||0)*r),
+    pro:Math.round((parseFloat(document.getElementById('m-pro').value)||0)*r*10)/10,
+    karb:Math.round((parseFloat(document.getElementById('m-karb').value)||0)*r*10)/10,
+    yag:Math.round((parseFloat(document.getElementById('m-yag').value)||0)*r*10)/10,
+    ikon:'✏️',kaynak:'manuel'
+  });
+  document.getElementById('manuel-ov').classList.remove('show');
+  renderEklenenler();
+  showToast('✓ Planına eklendi!');
+}
+
+function besinKaldir(i){eklenmisBesins.splice(i,1);renderEklenenler();}
+
+function renderEklenenler(){
+  const el=document.getElementById('eklenen-besinler');
+  if(!eklenmisBesins.length){
+    el.innerHTML='<div style="text-align:center;padding:24px;color:#B4B2A9;font-size:13px;line-height:1.8;">Henüz besin eklenmedi.<br>Arama veya 📷 barkod ile ekleyebilirsin.</div>';
+    return;
+  }
+  const topKcal=eklenmisBesins.reduce((a,b)=>a+b.kcal,0);
+  const kr=k=>k==='openfood'?'#1D9E75':k==='manuel'?'#2B5BA8':'#888780';
+  const kl=k=>k==='openfood'?'Open Food Facts':k==='manuel'?'Manuel':'Veritabanı';
+  el.innerHTML=`<div style="display:flex;justify-content:space-between;padding:10px 14px;background:#F1EFE8;border-radius:10px;margin-bottom:12px;align-items:center;">
+    <span style="font-size:12px;color:#888780;font-weight:500;">Günlük toplam</span>
+    <span style="font-size:18px;font-weight:600;">${topKcal} kcal</span>
+  </div>`+
+  eklenmisBesins.map((b,i)=>`<div class="eklenen-besin">
+    <div class="eb-ikon">${b.ikon}</div>
+    <div class="eb-bilgi">
+      <div class="eb-isim">${b.isim} <span style="font-size:10px;color:#888780;">${b.gramaj}g</span></div>
+      <div class="eb-makro">${b.kcal} kcal · P ${b.pro}g · K ${b.karb}g · Y ${b.yag}g · <span style="color:${kr(b.kaynak)};font-weight:600;">${kl(b.kaynak)}</span></div>
+    </div>
+    <button class="eb-sil" onclick="besinKaldir(${i})">×</button>
+  </div>`).join('');
+}
+
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2500);
+}
+
+['sonuc-ov','manuel-ov'].forEach(id=>{
+  document.getElementById(id).addEventListener('click',function(e){
+    if(e.target===this)this.classList.remove('show');
+  });
+});
+
+renderPlanlar();
+renderEklenenler();
+</script>
+</body>
+</html>
